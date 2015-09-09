@@ -4,3 +4,24 @@ Python-based daemon for watching docker events and update hosts file for DNSMasq
 This is Python fork of Ruby-based daemon [docker-dnsmaq](https://github.com/jaychris/docker-dnsmaq).
 Using DNSMasq for lightweight service discovery with docker containers is also inspired by 
 docker-log-analyzer by [zCirill](https://github.com/zCirill).
+
+Only Python 2.7 is supported yet. No any 3rd-party dependencies needed.
+Manually tested on Ubuntu 14.04 yet.
+
+## Usage:
+
+Place `dnsmasq_hosts_docker_watcher.py` to `/usr/local/etc/dnsmasq_hosts_docker_watcher.py`, for example. And run:
+
+```bash
+$ sudo python /usr/local/etc/dnsmasq_hosts_docker_watcher.py &
+```
+
+All these settings can be overriden by CLI parameters:
+
+- `-D` or `--debug` turn on debug (default mode is no debug)
+- `--hosts` — path to daemon's additional hosts file for DNSMasq (default: `/etc/docker_watcher_hosts`)
+- `--watcher-pid` — path to daemon's watcher PID (default: `/var/run/docker_watcher.pid`)
+- `--docker-pid` — path to Docker's PID (default: `/var/run/docker.pid`)
+- `--dnsmasq-pid` — path to DNSMasq's PID (default: `/var/run/dnsmasq/dnsmasq.pid`)
+- `--dnsmasq-user` — DNSMasq user (default: `dnsmasq`)
+- `--local-domain` — local domain. This is used in additional host record for local domain (default: `local`) 
