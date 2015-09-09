@@ -25,3 +25,14 @@ List of settings which can be overriden by CLI parameters:
 - `--dnsmasq-pid` — path to DNSMasq's PID (default: `/var/run/dnsmasq/dnsmasq.pid`)
 - `--dnsmasq-user` — DNSMasq user (default: `dnsmasq`)
 - `--local-domain` — local domain. This is used in additional host record for local domain (default: `local`) 
+
+
+## Release History
+   
+0.1.0
+
+- First release. Base functionality.
+
+## License
+
+Copyright &copy; 2015 Vladimir Bolshakov. Licensed under the GNU v2 license.
