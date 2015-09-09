@@ -49,7 +49,10 @@ def pid_exists(pid):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='DNSMasq Docker Watcher')
+    parser = argparse.ArgumentParser(
+        description='Daemon for watching docker events '
+                    'and update hosts file for DNSMasq'
+    )
     parser.add_argument('-D', '--debug', action='store_true',
                         help='Debug mode (default: %(default)s)')
     parser.add_argument('--hosts', dest='hosts', type=str,
