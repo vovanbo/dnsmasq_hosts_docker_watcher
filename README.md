@@ -16,7 +16,7 @@ Place `dnsmasq_hosts_docker_watcher.py` to `/usr/local/etc/dnsmasq_hosts_docker_
 $ sudo python /usr/local/etc/dnsmasq_hosts_docker_watcher.py &
 ```
 
-All these settings can be overriden by CLI parameters:
+List of settings which can be overriden by CLI parameters:
 
 - `-D` or `--debug` turn on debug (default mode is no debug)
 - `--hosts` — path to daemon's additional hosts file for DNSMasq (default: `/etc/docker_watcher_hosts`)
