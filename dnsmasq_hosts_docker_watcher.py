@@ -15,6 +15,7 @@ import errno
 import socket
 import pwd
 
+VERSION = '0.0.1'
 events = None
 
 
@@ -53,6 +54,8 @@ if __name__ == '__main__':
         description='Daemon for watching docker events '
                     'and update hosts file for DNSMasq'
     )
+    parser.add_argument('-V', '--version', action='store_true',
+                        help='Show version of daemon and exit')
     parser.add_argument('-D', '--debug', action='store_true',
                         help='Debug mode (default: %(default)s)')
     parser.add_argument('--hosts', dest='hosts', type=str,
@@ -75,6 +78,10 @@ if __name__ == '__main__':
                         help='DNSMasq service user (default: %(default)s)',
                         default='dnsmasq')
     args = parser.parse_args()
+
+    if args.version:
+        print(VERSION)
+        sys.exit()
 
     logFormatter = logging.Formatter(
         "%(asctime)s [%(levelname)-5.5s]  %(message)s"
