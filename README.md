@@ -32,7 +32,7 @@ List of settings which can be overriden by CLI parameters:
 0.2.2
 
 - Properly handle SIGHUP.
-- Fix bug with typecasting of container ID, when container ID is "<no value>".
+- Fix bug with typecasting of container ID, when container ID is `<no value>`.
 
 0.2.1
 
