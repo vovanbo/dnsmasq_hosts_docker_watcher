@@ -108,6 +108,7 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.signal(signal.SIGTERM, interrupt_handler)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     with open(args.watcher_pidfile, 'w+') as f:
         f.write(str(os.getpid()))
