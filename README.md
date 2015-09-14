@@ -29,6 +29,11 @@ List of settings which can be overriden by CLI parameters:
 
 ## Release History
 
+0.2.2
+
+- Properly handle SIGHUP.
+- Fix bug with typecasting of container ID, when container ID is "<no value>".
+
 0.2.1
 
 - Avoid duplicate of DNS records when FQDN and hostname is equally.
