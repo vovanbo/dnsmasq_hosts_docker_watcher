@@ -15,7 +15,7 @@ import errno
 import socket
 import pwd
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 events = None
 
 
