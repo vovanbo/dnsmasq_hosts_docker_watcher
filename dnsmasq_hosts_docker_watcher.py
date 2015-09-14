@@ -172,12 +172,16 @@ if __name__ == '__main__':
                     )
                     continue
 
-                host_record = '{ip} {name}.{host} {name}.{local} {cid}\n' \
-                    .format(ip=ip,
-                            name=name,
-                            host=socket.gethostname(),
-                            local=args.local_domain,
-                            cid=cid_short)
+                host_record = '{ip} ' \
+                              '{name}.{fqdn} ' \
+                              '{name}.{host} ' \
+                              '{name}.{local} ' \
+                              '{cid}\n'.format(ip=ip,
+                                               name=name,
+                                               fqdn=socket.getfqdn(),
+                                               host=socket.gethostname(),
+                                               local=args.local_domain,
+                                               cid=cid_short)
                 if os.path.exists(args.hosts):
                     with tempfile.NamedTemporaryFile(delete=False) as tmp:
                         for line in open(args.hosts):
