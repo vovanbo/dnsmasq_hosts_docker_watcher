@@ -164,7 +164,11 @@ if __name__ == '__main__':
                 logger.debug(container_info)
                 ip, name, cpid = container_info
                 name = name.strip('/')
-                cpid = int(cpid)
+                try:
+                    cpid = int(cpid)
+                except ValueError as e:
+                    logger.error(e.message)
+                    continue
 
                 if not cpid or not pid_exists(cpid):
                     logger.error(
