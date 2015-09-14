@@ -28,7 +28,11 @@ List of settings which can be overriden by CLI parameters:
 
 
 ## Release History
-   
+
+0.2.0
+
+- Add host record with FQDN in DNSMasq hosts file.
+
 0.1.0
 
 - First release. Base functionality.
