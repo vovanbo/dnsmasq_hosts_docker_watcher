@@ -15,7 +15,7 @@ import errno
 import socket
 import pwd
 
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 events = None
 
 
@@ -108,6 +108,7 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.signal(signal.SIGTERM, interrupt_handler)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     with open(args.watcher_pidfile, 'w+') as f:
         f.write(str(os.getpid()))
@@ -164,7 +165,11 @@ if __name__ == '__main__':
                 logger.debug(container_info)
                 ip, name, cpid = container_info
                 name = name.strip('/')
-                cpid = int(cpid)
+                try:
+                    cpid = int(cpid)
+                except ValueError as e:
+                    logger.error(e.message)
+                    continue
 
                 if not cpid or not pid_exists(cpid):
                     logger.error(
