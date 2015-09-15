@@ -254,10 +254,6 @@ def _run():
     parser.add_argument('--dnsmasq-pid', dest='dnsmasq_pidfile', type=str,
                         help='DNSMasq PID file (default: %(default)s)',
                         default='/var/run/dnsmasq/dnsmasq.pid')
-    parser.add_argument('--local-domain', dest='local_domain', type=str,
-                        help='Local domain name without dot '
-                             '(default: %(default)s)',
-                        default='local')
     parser.add_argument('--dnsmasq-user', dest='dnsmasq_user', type=str,
                         help='DNSMasq service user (default: %(default)s)',
                         default='dnsmasq')

@@ -26,7 +26,6 @@ List of settings which can be overriden by CLI parameters:
 - `--docker-pid` — path to Docker's PID (default: `/var/run/docker.pid`)
 - `--dnsmasq-pid` — path to DNSMasq's PID (default: `/var/run/dnsmasq/dnsmasq.pid`)
 - `--dnsmasq-user` — DNSMasq user (default: `dnsmasq`)
-- `--local-domain` — local domain. This is used in additional host record for local domain (default: `local`) 
 
 
 ## Release History
