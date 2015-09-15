@@ -85,9 +85,10 @@ def check_or_wait_for_docker_daemon(args):
     while not os.path.exists(args.docker_pidfile):
         now = time.time()
         if now - start_waiting_at > 600:
-            log.fatal('Docker daemon still not started after 10 minutes... '
-                      'Please contact your system administrator!')
-            sys.exit(1)
+            raise DaemonError(
+                'Docker daemon still not started after 10 minutes... '
+                'Please contact your system administrator!'
+            )
 
         log.warning('Docker daemon is not running yet...')
         time.sleep(5)
@@ -112,8 +113,7 @@ def run_docker_event_listener():
     try:
         return subprocess.Popen(['docker', 'events'], stdout=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
-        log.fatal('Cannot run "docker events".')
-        sys.exit(1)
+        raise DaemonError('Cannot run "docker events".')
 
 
 def run_event_parser(args, event_listener):
@@ -140,8 +140,7 @@ def run_event_parser(args, event_listener):
                     container_info = subprocess.check_output(inspect_cmd,
                                                              shell=True)
                 except subprocess.CalledProcessError as e:
-                    log.fatal('Cannot run "docker inspect".')
-                    sys.exit(1)
+                    raise DaemonError('Cannot run "docker inspect".')
 
                 container_info = container_info.strip().split('|')
                 log.debug(container_info)
