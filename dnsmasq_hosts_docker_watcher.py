@@ -51,8 +51,9 @@ def pid_exists(pid):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Daemon for watching docker events '
-                    'and update hosts file for DNSMasq'
+        description='Daemon for watching and parsing docker events, '
+                    'collecting containers IPs '
+                    'and updating hosts file for DNSMasq'
     )
     parser.add_argument('-V', '--version', action='store_true',
                         help='Show version of daemon and exit')
