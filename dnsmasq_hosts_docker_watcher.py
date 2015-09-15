@@ -96,16 +96,24 @@ def check_or_wait_for_docker_daemon(args):
 
 
 def setup_logging(args):
+    log_formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)-5.5s]  %(message)s")
+
+    log_file = logging.FileHandler(args.log_file)
+    log_file.setFormatter(log_formatter)
+
     if args.debug:
         log.setLevel(logging.DEBUG)
-        log_formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)-5.5s]  %(message)s")
         console = logging.StreamHandler(sys.stdout)
         console.setLevel(logging.DEBUG)
         console.setFormatter(log_formatter)
         log.addHandler(console)
+        log_file.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
+        log_file.setLevel(logging.WARNING)
+
+    log.addHandler(log_file)
 
 
 def run_docker_event_listener():
@@ -231,6 +239,9 @@ def _run():
                         help='Show version of daemon and exit')
     parser.add_argument('-D', '--debug', action='store_true',
                         help='Debug mode (default: %(default)s)')
+    parser.add_argument('-L', '--log-file', dest='log_file', type=str,
+                        help='Log to file (default: %(default)s)',
+                        default='/var/log/docker_watcher.log')
     parser.add_argument('--hosts', dest='hosts', type=str,
                         help='Hosts file (default: %(default)s)',
                         default='/etc/docker_watcher_hosts')
