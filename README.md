@@ -31,7 +31,7 @@ List of settings which can be overriden by CLI parameters:
 
 ## Release History
 
-0.3.0
+### 0.3.0
 
 - Improved logging. Log file support. No more used console (stdout) output.
 - Remove options for local domain.
@@ -39,24 +39,24 @@ List of settings which can be overriden by CLI parameters:
 - No more using subprocess to restart (kill with SIGHUP) DNSMasq daemon.
 - Daemon refactoring to grow testability up (tests in TODO now).
 
-0.2.3
+### 0.2.3
 
 - Fix README
 
-0.2.2
+### 0.2.2
 
 - Properly handle SIGHUP.
 - Fix bug with typecasting of container ID, when container ID is `<no value>`.
 
-0.2.1
+### 0.2.1
 
 - Avoid duplicate of DNS records when FQDN and hostname is equally.
 
-0.2.0
+### 0.2.0
 
 - Add host record with FQDN in DNSMasq hosts file.
 
-0.1.0
+### 0.1.0
 
 - First release. Base functionality.
 
