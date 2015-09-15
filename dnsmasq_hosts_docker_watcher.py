@@ -65,6 +65,7 @@ def setup_signal_handlers(args, event_listener):
         log.debug('PID file {0} removed.'.format(args.watcher_pidfile))
         if isinstance(event_listener, subprocess.Popen):
             event_listener.kill()
+            log.debug('Docker events listener is killed.')
         sys.exit()
 
     signal.signal(signal.SIGINT, interrupt_handler)
@@ -170,6 +171,7 @@ def run_event_parser(args, event_listener):
                             if cid_short not in line:
                                 tmp.write(line)
                     shutil.move(tmp.name, args.hosts)
+
                 with open(args.hosts, 'a+') as f:
                     try:
                         f.write(dns_record + '\n')
@@ -255,7 +257,7 @@ def _run():
         return print_version()
 
     setup_logging(args)
-    log.info('Starting DNSMasq Docker watcher')
+    log.info('Starting DNSMasq Docker watcher daemon')
     create_pid_file(args)
     check_or_wait_for_docker_daemon(args)
     event_listener = run_docker_event_listener()
