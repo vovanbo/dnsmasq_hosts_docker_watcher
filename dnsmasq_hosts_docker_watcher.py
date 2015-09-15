@@ -15,8 +15,13 @@ import errno
 import socket
 import pwd
 
-VERSION = '0.2.2'
-events = None
+VERSION = '0.3.0-dev'
+
+log = logging.getLogger('dnsmasq_hosts_docker_watcher')
+
+
+class DaemonError(Exception):
+    pass
 
 
 def pid_exists(pid):
@@ -49,7 +54,173 @@ def pid_exists(pid):
         return True
 
 
-if __name__ == '__main__':
+def print_version():
+    print(VERSION)
+
+
+def setup_signal_handlers(args, event_listener):
+    def interrupt_handler(signum, frame):
+        log.info('Caught signal {0}. Exiting...'.format(signum))
+        os.unlink(args.watcher_pidfile)
+        log.debug('PID file {0} removed.'.format(args.watcher_pidfile))
+        if isinstance(event_listener, subprocess.Popen):
+            event_listener.kill()
+        sys.exit()
+
+    signal.signal(signal.SIGINT, interrupt_handler)
+    signal.signal(signal.SIGTERM, interrupt_handler)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+
+def create_pid_file(args):
+    with open(args.watcher_pidfile, 'w+') as f:
+        f.write(str(os.getpid()))
+    log.debug('PID file {0} created'.format(args.watcher_pidfile))
+
+
+def check_or_wait_for_docker_daemon(args):
+    log.info('Wait for Docker daemon...')
+    start_waiting_at = time.time()
+    while not os.path.exists(args.docker_pidfile):
+        now = time.time()
+        if now - start_waiting_at > 600:
+            log.fatal('Docker daemon still not started after 10 minutes... '
+                      'Please contact your system administrator!')
+            sys.exit(1)
+
+        log.warning('Docker daemon is not running yet...')
+        time.sleep(5)
+    log.info('Docker daemon up!')
+
+
+def setup_logging(args):
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+        log_formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)-5.5s]  %(message)s")
+        console = logging.StreamHandler(sys.stdout)
+        console.setLevel(logging.DEBUG)
+        console.setFormatter(log_formatter)
+        log.addHandler(console)
+    else:
+        log.setLevel(logging.WARNING)
+
+
+def run_docker_event_listener():
+    log.info('Listening for events...')
+    try:
+        return subprocess.Popen(['docker', 'events'], stdout=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        log.fatal('Cannot run "docker events".')
+        sys.exit(1)
+
+
+def run_event_parser(args, event_listener):
+    cid_pattern = re.compile(r'^.*([0-9a-f]{64}).*$', re.IGNORECASE)
+    fqdn = socket.getfqdn()
+
+    while True:
+        line = event_listener.stdout.readline()
+        if line:
+            event = line.split()[-1]
+            cid_long = cid_pattern.search(line).group(1)
+            cid_short = cid_long[:12]
+
+            log.debug('Event fired ({0}): {1}'.format(cid_long, event))
+
+            # START EVENT
+            if event == 'start':
+                inspect_fmt = '{{.NetworkSettings.IPAddress}}|' \
+                              '{{.Name}}|' \
+                              '{{.State.Pid}}'
+                inspect_cmd = 'docker inspect ' \
+                              '--format="{0}" {1}'.format(inspect_fmt, cid_long)
+                try:
+                    container_info = subprocess.check_output(inspect_cmd,
+                                                             shell=True)
+                except subprocess.CalledProcessError as e:
+                    log.fatal('Cannot run "docker inspect".')
+                    sys.exit(1)
+
+                container_info = container_info.strip().split('|')
+                log.debug(container_info)
+                ip, name, cpid = container_info
+                name = name.strip('/')
+                try:
+                    cpid = int(cpid)
+                except ValueError as e:
+                    log.error(e.message)
+                    continue
+
+                if not cpid or not pid_exists(cpid):
+                    log.error(
+                        'Could not find a process indentifier '
+                        'for container {0}. '
+                        'Cannot update DNS.'.format(cid_short)
+                    )
+                    continue
+
+                dns_record = '{ip} {name}.{fqdn} {cid}'.format(ip=ip,
+                                                               name=name,
+                                                               fqdn=fqdn,
+                                                               cid=cid_short)
+                if os.path.exists(args.hosts):
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                        for line in open(args.hosts):
+                            if cid_short not in line:
+                                tmp.write(line)
+                    shutil.move(tmp.name, args.hosts)
+                with open(args.hosts, 'a+') as f:
+                    try:
+                        f.write(dns_record + '\n')
+                    except IOError:
+                        log.error(
+                            'Could not update DNSMasq record for '
+                            '{0}.'.format(cid_short)
+                        )
+                        continue
+                # Set owner and permissions to hosts file
+                try:
+                    uid = pwd.getpwnam(args.dnsmasq_user).pw_uid
+                except KeyError as e:
+                    uid = pwd.getpwnam('root').pw_uid
+                os.chown(f.name, uid, -1)
+                os.chmod(f.name, 0640)
+
+                log.debug(
+                    'Updated DNSMasq. Added record for {0}: {1}'.format(
+                        cid_short, dns_record
+                    )
+                )
+                kill_result = subprocess.call(
+                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
+                    shell=True
+                )
+                log.debug(
+                    'DNSMasq restarted (result: {0}).'.format(kill_result)
+                )
+
+            # STOP EVENT
+            elif event == 'stop' or event == 'die':
+                if os.path.exists(args.hosts):
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                        for line in open(args.hosts):
+                            if cid_short not in line:
+                                tmp.write(line)
+                    shutil.move(tmp.name, args.hosts)
+                log.debug(
+                    'Updated DNSMasq. Removed record for {0}'.format(cid_short)
+                )
+                kill_result = subprocess.call(
+                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
+                    shell=True
+                )
+                log.debug(
+                    'DNSMasq restarted (result: {0}).'.format(kill_result)
+                )
+
+
+def _run():
     parser = argparse.ArgumentParser(
         description='Daemon for watching and parsing docker events, '
                     'collecting containers IPs '
@@ -81,159 +252,27 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.version:
-        print(VERSION)
-        sys.exit()
+        return print_version()
 
-    logFormatter = logging.Formatter(
-        "%(asctime)s [%(levelname)-5.5s]  %(message)s"
-    )
-    logger = logging.getLogger('docker_watcher')
-
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-        console = logging.StreamHandler(sys.stdout)
-        console.setLevel(logging.DEBUG)
-        console.setFormatter(logFormatter)
-        logger.addHandler(console)
-    else:
-        logger.setLevel(logging.WARNING)
+    setup_logging(args)
+    log.info('Starting DNSMasq Docker watcher')
+    create_pid_file(args)
+    check_or_wait_for_docker_daemon(args)
+    event_listener = run_docker_event_listener()
+    setup_signal_handlers(args, event_listener)
+    run_event_parser(args, event_listener)
 
 
-    def interrupt_handler(signum, frame):
-        logger.info('Caught signal {0}. Exiting...'.format(signum))
-        os.unlink(args.watcher_pidfile)
-        if isinstance(events, subprocess.Popen):
-            events.kill()
-        sys.exit()
-
-
-    signal.signal(signal.SIGINT, interrupt_handler)
-    signal.signal(signal.SIGTERM, interrupt_handler)
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)
-
-    with open(args.watcher_pidfile, 'w+') as f:
-        f.write(str(os.getpid()))
-
-    logger.info('Starting DNSMasq Docker watcher')
-
-    start_waiting_at = time.time()
-    while not os.path.exists(args.docker_pidfile):
-        now = time.time()
-        if now - start_waiting_at > 600:
-            logging.fatal('Docker daemon still not started after 10 minutes... '
-                          'Please contact your system administrator!')
-            sys.exit(1)
-
-        logging.warning('Docker daemon is not running yet...')
-        time.sleep(5)
-
-    logger.info('Docker Daemon Up! - Listening for events...')
-
+def main():
+    """
+    Execute daemon
+    :return:
+    """
     try:
-        events = subprocess.Popen(['docker', 'events'], stdout=subprocess.PIPE)
-    except subprocess.CalledProcessError as e:
-        logger.fatal('Cannot run "docker events".')
-        sys.exit(1)
+        return _run()
+    except DaemonError as e:
+        log.error(e.message)
 
-    cid_pattern = re.compile(r'^.*([0-9a-f]{64}).*$', re.IGNORECASE)
-    fqdn = socket.getfqdn()
 
-    while True:
-        line = events.stdout.readline()
-        if line:
-            event = line.split()[-1]
-            cid_long = cid_pattern.search(line).group(1)
-            cid_short = cid_long[:12]
-
-            logger.debug('Event fired ({0}): {1}'.format(cid_long, event))
-
-            # START EVENT
-            if event == 'start':
-                inspect_fmt = '{{.NetworkSettings.IPAddress}}|' \
-                              '{{.Name}}|' \
-                              '{{.State.Pid}}'
-                inspect_cmd = 'docker inspect ' \
-                              '--format="{0}" {1}'.format(inspect_fmt, cid_long)
-                try:
-                    container_info = subprocess.check_output(inspect_cmd,
-                                                             shell=True)
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('Cannot run "docker inspect".')
-                    sys.exit(1)
-
-                container_info = container_info.strip().split('|')
-                logger.debug(container_info)
-                ip, name, cpid = container_info
-                name = name.strip('/')
-                try:
-                    cpid = int(cpid)
-                except ValueError as e:
-                    logger.error(e.message)
-                    continue
-
-                if not cpid or not pid_exists(cpid):
-                    logger.error(
-                        'Could not find a process indentifier '
-                        'for container {0}. '
-                        'Cannot update DNS.'.format(cid_short)
-                    )
-                    continue
-
-                dns_record = '{ip} {name}.{fqdn} {cid}'.format(ip=ip,
-                                                               name=name,
-                                                               fqdn=fqdn,
-                                                               cid=cid_short)
-                if os.path.exists(args.hosts):
-                    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                        for line in open(args.hosts):
-                            if cid_short not in line:
-                                tmp.write(line)
-                    shutil.move(tmp.name, args.hosts)
-                with open(args.hosts, 'a+') as f:
-                    try:
-                        f.write(dns_record + '\n')
-                    except IOError:
-                        logger.error(
-                            'Could not update DNSMasq record for '
-                            '{0}.'.format(cid_short)
-                        )
-                        continue
-                # Set owner and permissions to hosts file
-                try:
-                    uid = pwd.getpwnam(args.dnsmasq_user).pw_uid
-                except KeyError as e:
-                    uid = pwd.getpwnam('root').pw_uid
-                os.chown(f.name, uid, -1)
-                os.chmod(f.name, 0640)
-
-                logger.debug(
-                    'Updated DNSMasq. Added record for {0}: {1}'.format(
-                        cid_short, dns_record
-                    )
-                )
-                kill_result = subprocess.call(
-                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
-                    shell=True
-                )
-                logger.debug(
-                    'DNSMasq restarted (result: {0}).'.format(kill_result)
-                )
-
-            # STOP EVENT
-            elif event == 'stop' or event == 'die':
-                if os.path.exists(args.hosts):
-                    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                        for line in open(args.hosts):
-                            if cid_short not in line:
-                                tmp.write(line)
-                    shutil.move(tmp.name, args.hosts)
-                logger.debug(
-                    'Updated DNSMasq. Removed record for {0}'.format(cid_short)
-                )
-                kill_result = subprocess.call(
-                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
-                    shell=True
-                )
-                logger.debug(
-                    'DNSMasq restarted (result: {0}).'.format(kill_result)
-                )
+if __name__ == '__main__':
+    main()
