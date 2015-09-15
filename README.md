@@ -22,6 +22,7 @@ List of settings which can be overriden by CLI parameters:
 - `-V` or `--version` — show version of daemon and exit
 - `-D` or `--debug` turn on debug (default mode is no debug)
 - `--hosts` — path to daemon's additional hosts file for DNSMasq (default: `/etc/docker_watcher_hosts`)
+- `-L` or `--log-file` — log to file (default: `/var/log/docker_watcher.log`)
 - `--watcher-pid` — path to daemon's watcher PID (default: `/var/run/docker_watcher.pid`)
 - `--docker-pid` — path to Docker's PID (default: `/var/run/docker.pid`)
 - `--dnsmasq-pid` — path to DNSMasq's PID (default: `/var/run/dnsmasq/dnsmasq.pid`)
