@@ -16,8 +16,8 @@ import socket
 import pwd
 
 VERSION = '0.3.0-dev'
-
-log = logging.getLogger('dnsmasq_hosts_docker_watcher')
+LOG_FORMAT = "%(asctime)s [%(levelname)-5.5s]  %(message)s"
+LOGGER_NAME = 'dnsmasq_hosts_docker_watcher'
 
 
 class DaemonError(Exception):
@@ -60,6 +60,7 @@ def print_version():
 
 def setup_signal_handlers(args, event_listener):
     def interrupt_handler(signum, frame):
+        log = logging.getLogger(LOGGER_NAME)
         log.info('Caught signal {0}. Exiting...'.format(signum))
         os.unlink(args.watcher_pidfile)
         log.debug('PID file {0} removed.'.format(args.watcher_pidfile))
@@ -76,10 +77,12 @@ def setup_signal_handlers(args, event_listener):
 def create_pid_file(args):
     with open(args.watcher_pidfile, 'w+') as f:
         f.write(str(os.getpid()))
+    log = logging.getLogger(LOGGER_NAME)
     log.debug('PID file {0} created'.format(args.watcher_pidfile))
 
 
 def check_or_wait_for_docker_daemon(args):
+    log = logging.getLogger(LOGGER_NAME)
     log.info('Wait for Docker daemon...')
     start_waiting_at = time.time()
     while not os.path.exists(args.docker_pidfile):
@@ -95,28 +98,8 @@ def check_or_wait_for_docker_daemon(args):
     log.info('Docker daemon up!')
 
 
-def setup_logging(args):
-    log_formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)-5.5s]  %(message)s")
-
-    log_file = logging.FileHandler(args.log_file)
-    log_file.setFormatter(log_formatter)
-
-    if args.debug:
-        log.setLevel(logging.DEBUG)
-        console = logging.StreamHandler(sys.stdout)
-        console.setLevel(logging.DEBUG)
-        console.setFormatter(log_formatter)
-        log.addHandler(console)
-        log_file.setLevel(logging.DEBUG)
-    else:
-        log.setLevel(logging.WARNING)
-        log_file.setLevel(logging.WARNING)
-
-    log.addHandler(log_file)
-
-
 def run_docker_event_listener():
+    log = logging.getLogger(LOGGER_NAME)
     log.info('Listening for events...')
     try:
         return subprocess.Popen(['docker', 'events'], stdout=subprocess.PIPE)
@@ -125,6 +108,7 @@ def run_docker_event_listener():
 
 
 def run_event_parser(args, event_listener):
+    log = logging.getLogger(LOGGER_NAME)
     cid_pattern = re.compile(r'^.*([0-9a-f]{64}).*$', re.IGNORECASE)
     fqdn = socket.getfqdn()
 
@@ -262,7 +246,12 @@ def _run():
     if args.version:
         return print_version()
 
-    setup_logging(args)
+    logging.basicConfig(
+        filename=args.log_file,
+        format=LOG_FORMAT,
+        level=logging.DEBUG if args.debug else logging.WARNING
+    )
+    log = logging.getLogger(LOGGER_NAME)
     log.info('Starting DNSMasq Docker watcher daemon')
     create_pid_file(args)
     check_or_wait_for_docker_daemon(args)
@@ -279,10 +268,12 @@ def main():
     try:
         return _run()
     except DaemonError as e:
+        log = logging.getLogger(LOGGER_NAME)
         log.error(e.message)
         return 1
     except Exception as e:
-        log.fatal(e.message)
+        log = logging.getLogger(LOGGER_NAME)
+        log.fatal(str(e))
         return 1
 
 
