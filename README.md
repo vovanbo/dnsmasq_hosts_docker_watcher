@@ -1,4 +1,5 @@
 # dnsmasq_hosts_docker_watcher
+
 Python-based daemon for watching docker events and update hosts file for DNSMasq.
 
 This is Python fork of Ruby-based daemon [docker-dnsmaq](https://github.com/jaychris/docker-dnsmaq).
@@ -18,16 +19,29 @@ $ sudo python /usr/local/etc/dnsmasq_hosts_docker_watcher.py &
 
 List of settings which can be overriden by CLI parameters:
 
+- `-V` or `--version` — show version of daemon and exit
 - `-D` or `--debug` turn on debug (default mode is no debug)
-- `--hosts` — path to daemon's additional hosts file for DNSMasq (default: `/etc/docker_watcher_hosts`)
+- `-L` or `--log-file` — log to file (default: `/var/log/docker_watcher.log`)
+- `-H` or `--hosts` — path to daemon's additional hosts file for DNSMasq (default: `/etc/docker_watcher_hosts`)
 - `--watcher-pid` — path to daemon's watcher PID (default: `/var/run/docker_watcher.pid`)
 - `--docker-pid` — path to Docker's PID (default: `/var/run/docker.pid`)
 - `--dnsmasq-pid` — path to DNSMasq's PID (default: `/var/run/dnsmasq/dnsmasq.pid`)
 - `--dnsmasq-user` — DNSMasq user (default: `dnsmasq`)
-- `--local-domain` — local domain. This is used in additional host record for local domain (default: `local`) 
 
 
 ## Release History
+
+0.3.0
+
+- Improved logging. Log file support. No more used console (stdout) output.
+- Remove options for local domain.
+- Use only FQDN in DNS records. Remove hostname and local records.
+- No more using subprocess to restart (kill with SIGHUP) DNSMasq daemon.
+- Daemon refactoring to grow testability up (tests in TODO now).
+
+0.2.3
+
+- Fix README
 
 0.2.2
 
@@ -48,4 +62,4 @@ List of settings which can be overriden by CLI parameters:
 
 ## License
 
-Copyright &copy; 2015 Vladimir Bolshakov. Licensed under the GNU v2 license.
+Copyright &copy; 2015 Vladimir Bolshakov. Licensed under the GNU GPL v2.
