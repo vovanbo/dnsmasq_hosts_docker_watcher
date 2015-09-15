@@ -242,7 +242,7 @@ def _run():
     parser.add_argument('-L', '--log-file', dest='log_file', type=str,
                         help='Log to file (default: %(default)s)',
                         default='/var/log/docker_watcher.log')
-    parser.add_argument('--hosts', dest='hosts', type=str,
+    parser.add_argument('-H', '--hosts', dest='hosts', type=str,
                         help='Hosts file (default: %(default)s)',
                         default='/etc/docker_watcher_hosts')
     parser.add_argument('--watcher-pid', dest='watcher_pidfile', type=str,
