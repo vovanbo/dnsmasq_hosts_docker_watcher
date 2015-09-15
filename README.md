@@ -31,6 +31,14 @@ List of settings which can be overriden by CLI parameters:
 
 ## Release History
 
+0.3.0
+
+- Improved logging. Log file support. No more used console (stdout) output.
+- Remove options for local domain.
+- Use only FQDN in DNS records. Remove hostname and local records.
+- No more using subprocess to restart (kill with SIGHUP) DNSMasq daemon.
+- Daemon refactoring to grow testability up (tests in TODO now).
+
 0.2.3
 
 - Fix README

@@ -15,7 +15,7 @@ import errno
 import socket
 import pwd
 
-VERSION = '0.3.0-dev'
+VERSION = '0.3.0'
 LOG_FORMAT = "%(asctime)s [%(levelname)-5.5s]  %(message)s"
 LOGGER_NAME = 'dnsmasq_hosts_docker_watcher'
 
