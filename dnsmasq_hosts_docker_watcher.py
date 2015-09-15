@@ -54,6 +54,22 @@ def pid_exists(pid):
         return True
 
 
+def kill_process(pidfile, signal):
+    if os.path.exists(pidfile):
+        pid = open(pidfile).read()
+        try:
+            pid = int(pid.strip())
+        except ValueError:
+            return False
+        if pid_exists(pid):
+            os.kill(pid, signal)
+        else:
+            return False
+        return True
+    else:
+        return False
+
+
 def print_version():
     print(VERSION)
 
@@ -182,16 +198,14 @@ def run_event_parser(args, event_listener):
 
                 log.debug(
                     'Updated DNSMasq. Added record for {0}: {1}'.format(
-                        cid_short, dns_record
-                    )
+                        cid_short, dns_record)
                 )
-                kill_result = subprocess.call(
-                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
-                    shell=True
-                )
-                log.debug(
-                    'DNSMasq restarted (result: {0}).'.format(kill_result)
-                )
+                is_dnsmasq_restarted = kill_process(args.dnsmasq_pidfile,
+                                                    signal.SIGHUP)
+                if is_dnsmasq_restarted:
+                    log.debug('DNSMasq restarted.')
+                else:
+                    log.warning('DNSMasq is not restarted.')
 
             # STOP EVENT
             elif event == 'stop' or event == 'die':
@@ -204,13 +218,12 @@ def run_event_parser(args, event_listener):
                 log.debug(
                     'Updated DNSMasq. Removed record for {0}'.format(cid_short)
                 )
-                kill_result = subprocess.call(
-                    'kill -s HUP $(cat {0})'.format(args.dnsmasq_pidfile),
-                    shell=True
-                )
-                log.debug(
-                    'DNSMasq restarted (result: {0}).'.format(kill_result)
-                )
+                is_dnsmasq_restarted = kill_process(args.dnsmasq_pidfile,
+                                                    signal.SIGHUP)
+                if is_dnsmasq_restarted:
+                    log.debug('DNSMasq restarted.')
+                else:
+                    log.warning('DNSMasq is not restarted.')
 
 
 def _run():
@@ -253,6 +266,7 @@ def _run():
     )
     log = logging.getLogger(LOGGER_NAME)
     log.info('Starting DNSMasq Docker watcher daemon')
+
     create_pid_file(args)
     check_or_wait_for_docker_daemon(args)
     event_listener = run_docker_event_listener()
