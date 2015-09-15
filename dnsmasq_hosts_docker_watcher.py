@@ -137,7 +137,6 @@ if __name__ == '__main__':
 
     cid_pattern = re.compile(r'^.*([0-9a-f]{64}).*$', re.IGNORECASE)
     fqdn = socket.getfqdn()
-    hostname = socket.gethostname()
 
     while True:
         line = events.stdout.readline()
@@ -180,21 +179,10 @@ if __name__ == '__main__':
                     )
                     continue
 
-                if fqdn == hostname:
-                    host_record = '{name}.{fqdn}'.format(name=name,
-                                                         fqdn=fqdn)
-                else:
-                    host_record = '{name}.{fqdn} {name}.{hostname}'.format(
-                        name=name, fqdn=fqdn, hostname=hostname
-                    )
-                dns_record = '{ip} ' \
-                             '{host_record} ' \
-                             '{name}.{local} ' \
-                             '{cid}\n'.format(ip=ip,
-                                              name=name,
-                                              host_record=host_record,
-                                              local=args.local_domain,
-                                              cid=cid_short)
+                dns_record = '{ip} {name}.{fqdn} {cid}'.format(ip=ip,
+                                                               name=name,
+                                                               fqdn=fqdn,
+                                                               cid=cid_short)
                 if os.path.exists(args.hosts):
                     with tempfile.NamedTemporaryFile(delete=False) as tmp:
                         for line in open(args.hosts):
@@ -203,7 +191,7 @@ if __name__ == '__main__':
                     shutil.move(tmp.name, args.hosts)
                 with open(args.hosts, 'a+') as f:
                     try:
-                        f.write(dns_record)
+                        f.write(dns_record + '\n')
                     except IOError:
                         logger.error(
                             'Could not update DNSMasq record for '
@@ -219,8 +207,8 @@ if __name__ == '__main__':
                 os.chmod(f.name, 0640)
 
                 logger.debug(
-                    'Updated DNSMasq, Added record for {0}: {1}'.format(
-                        cid_short, dns_record.strip()
+                    'Updated DNSMasq. Added record for {0}: {1}'.format(
+                        cid_short, dns_record
                     )
                 )
                 kill_result = subprocess.call(
