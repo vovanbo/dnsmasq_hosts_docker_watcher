@@ -215,6 +215,14 @@ def run_event_parser(args, event_listener):
                             if cid_short not in line:
                                 tmp.write(line)
                     shutil.move(tmp.name, args.hosts)
+                    # Set owner and permissions to hosts file
+                    try:
+                        uid = pwd.getpwnam(args.dnsmasq_user).pw_uid
+                    except KeyError as e:
+                        uid = pwd.getpwnam('root').pw_uid
+                    os.chown(args.hosts, uid, -1)
+                    os.chmod(args.hosts, 0640)
+
                 log.debug(
                     'Updated DNSMasq. Removed record for {0}'.format(cid_short)
                 )
